@@ -1,18 +1,14 @@
-# Use Node.js as the base image
-FROM node:18-alpine
+# Use Nginx to serve the static content
+FROM nginx:alpine
 
-# Set the working directory
-WORKDIR /app
+# Clean the default public folder
+RUN rm -rf /usr/share/nginx/html/*
 
-# Copy package files and install dependencies
-COPY package*.json ./
-RUN npm install
+# Copy your pre-built dist folder content into Nginx
+COPY dist/ /usr/share/nginx/html/
 
-# Copy the rest of the application code
-COPY . .
+# Expose port 80 to match your K8s service
+EXPOSE 80
 
-# Expose the application port
-EXPOSE 3000
-
-# Start the application
-CMD ["npm", "start"]
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]
