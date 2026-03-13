@@ -1,4 +1,14 @@
+# Terraform
 .terraform/
 *.tfstate
 *.tfstate.backup
-temp_trend/
+.terraform.lock.hcl
+*.tfvars
+
+# Secrets & Keys
+*.pem
+*.key
+.env
+
+# OS files
+.DS_Store
