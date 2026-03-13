@@ -12,7 +12,9 @@ pipeline {
 
     stages {
         stage('Cleanup') {
-            steps { cleanWs() }
+            steps {
+                cleanWs()
+            }
         }
 
         stage('Checkout') {
@@ -33,7 +35,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${DOCKER_CRED_ID}", passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-                        sh "echo $PASS | docker login -u $USER --password-stdin"
+                        sh "echo \$PASS | docker login -u \$USER --password-stdin"
                         sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
                     }
                 }
@@ -43,19 +45,28 @@ pipeline {
         stage('Deploy to EKS') {
             steps {
                 script {
-                    // Use the KubeConfig from Jenkins credentials
                     withKubeConfig([credentialsId: "${KUBE_CONFIG_ID}", clusterName: "${CLUSTER_NAME}"]) {
-                        
-                        // 1. Force the AWS CLI to update the kubeconfig for the current session
+                        // Explicitly update kubeconfig to ensure we aren't hitting a local redirect
                         sh "aws eks update-kubeconfig --region ${REGION} --name ${CLUSTER_NAME}"
                         
-                        // 2. Apply manifests with a timeout and validation disabled
+                        // Apply manifests with validation disabled to bypass the redirect issue
                         sh "kubectl apply -f kubernetes/deployment.yaml --validate=false"
                         sh "kubectl apply -f kubernetes/service.yaml --validate=false"
                         
-                        // 3. Force restart
+                        // Restart to pull the fresh image
                         sh "kubectl rollout restart deployment/trendstore-deployment"
                     }
                 }
             }
         }
+    }
+
+    post {
+        success {
+            echo "SUCCESS: TrendStore version ${BUILD_NUMBER} is live!"
+        }
+        failure {
+            echo "FAILURE: Check logs for the specific stage failure."
+        }
+    }
+}
