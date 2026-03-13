@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: trendstore-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+spec:
+  rules:
+    - http:
+        paths:
+          path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: trendstore-service
+              port:
+                number: 80
