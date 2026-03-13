@@ -44,12 +44,24 @@ pipeline {
             steps {
                 script {
                     withKubeConfig([credentialsId: "${KUBE_CONFIG_ID}", clusterName: "${CLUSTER_NAME}"]) {
-                        sh "kubectl apply -f kubernetes/deployment.yaml"
-                        sh "kubectl apply -f kubernetes/service.yaml"
-                        sh "kubectl rollout restart deployment/trendstore-deployment"
+                        // Applying manifests without validation to bypass the 401 redirect issue
+                        sh "kubectl apply -f kubernetes/deployment.yaml --validate=false"
+                        sh "kubectl apply -f kubernetes/service.yaml --validate=false"
+                        
+                        // Restarting ensures the latest image is pulled from Docker Hub
+                        sh "kubectl rollout restart deployment/trendstore-deployment --validate=false"
                     }
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "SUCCESS: TrendStore version ${BUILD_NUMBER} is live on EKS!"
+        }
+        failure {
+            echo "FAILURE: Check the logs for the specific stage that failed."
         }
     }
 }
