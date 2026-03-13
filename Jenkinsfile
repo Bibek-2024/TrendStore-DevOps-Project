@@ -43,25 +43,19 @@ pipeline {
         stage('Deploy to EKS') {
             steps {
                 script {
+                    // Use the KubeConfig from Jenkins credentials
                     withKubeConfig([credentialsId: "${KUBE_CONFIG_ID}", clusterName: "${CLUSTER_NAME}"]) {
-                        // Applying manifests without validation to bypass the 401 redirect issue
+                        
+                        // 1. Force the AWS CLI to update the kubeconfig for the current session
+                        sh "aws eks update-kubeconfig --region ${REGION} --name ${CLUSTER_NAME}"
+                        
+                        // 2. Apply manifests with a timeout and validation disabled
                         sh "kubectl apply -f kubernetes/deployment.yaml --validate=false"
                         sh "kubectl apply -f kubernetes/service.yaml --validate=false"
                         
-                        // Restarting ensures the latest image is pulled from Docker Hub
-                        sh "kubectl rollout restart deployment/trendstore-deployment --validate=false"
+                        // 3. Force restart
+                        sh "kubectl rollout restart deployment/trendstore-deployment"
                     }
                 }
             }
         }
-    }
-
-    post {
-        success {
-            echo "SUCCESS: TrendStore version ${BUILD_NUMBER} is live on EKS!"
-        }
-        failure {
-            echo "FAILURE: Check the logs for the specific stage that failed."
-        }
-    }
-}
